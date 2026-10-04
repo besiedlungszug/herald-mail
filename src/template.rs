@@ -41,3 +41,34 @@ fn render<'a>(handlebars: impl Deref<Target = Handlebars<'a>>, slug: impl Deref<
     let message = handlebars.render(slug.as_ref(), &contract).expect("Error while rendering mail template");
     tx.blocking_send(message).expect("Error while writing queue 'rnd': closed handle");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::render;
+
+    use tokio::sync::mpsc;
+    use handlebars::Handlebars;
+
+    #[tokio::test]
+    async fn handlebars_render_template() {
+        let mut handlebars = Handlebars::new();
+        let template = "Hello {{name}},\nwe are glad to confirm your registration to {{topic}}.";
+        handlebars.register_template_string("test", template).unwrap();
+        handlebars.set_strict_mode(true);
+        handlebars.register_escape_fn(handlebars::no_escape);
+
+        let (tx, mut rx) = mpsc::channel::<String>(1);
+        #[derive(serde::Serialize)]
+        struct Thing {
+            name: String,
+            topic: String,
+        }
+        let thing = Thing {
+            name: "Testo Husbando".to_string(),
+            topic: "Event 'Unittesting is great'".to_string(),
+        };
+        tokio::task::spawn_blocking(move || render(&handlebars, "test", thing, tx));
+        let message = rx.recv().await.expect("handle closed prematurely");
+        assert_eq!(message, "Hello Testo Husbando,\nwe are glad to confirm your registration to Event 'Unittesting is great'.");
+    }
+}
