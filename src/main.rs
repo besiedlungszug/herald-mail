@@ -71,33 +71,3 @@ async fn main() -> () {
     
     unreachable!()
 }
-/*
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_mustache_render() {
-        let (tx, mut rx) = mpsc::channel::<(String, String)>(1);
-        #[derive(serde::Serialize)]
-        struct Thing {
-            name: String,
-            topic: String,
-        }
-        let thing = Thing {
-            name: "Testo Husbando".to_string(),
-            topic: "Event 'Unittesting is great'".to_string(),
-        };
-        let template = Template {
-            contract: "unittest".to_string(),
-            body: "Hello {{{name}}},\nwe are glad to confirm your registration to {{{topic}}}.\n\nBest regards,\nUnittest Team".to_string(),
-            subject: "Your registration to {{{topic}}}".to_string(),
-        };
-        let template = Box::pin(template);
-        tokio::spawn(render(thing, template, tx));
-        let (subject, body) = rx.recv().await.expect("handle closed prematurely");
-        assert_eq!(subject, "Your registration to Event 'Unittesting is great'");
-        assert_eq!(body, "Hello Testo Husbando,\nwe are glad to confirm your registration to Event 'Unittesting is great'.\n\nBest regards,\nUnittest Team");
-    }
-}
-*/
