@@ -1,4 +1,7 @@
 # Herald Mail
+
+[![REUSE status](https://api.reuse.software/badge/github.com/besiedlungszug/herald-mail)](https://api.reuse.software/info/github.com/besiedlungszug/herald-mail)
+
 This is the mailer subsystem of [Herald], the application layer of the
 historischer-besiedlungszug.de website written in Rust.
 Its purpose is to send confirmation e-mails and invoice information to event participants.
