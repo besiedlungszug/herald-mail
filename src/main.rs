@@ -1,5 +1,7 @@
+use std::str::FromStr;
 use std::time::Duration;
 use std::env;
+use std::env::VarError;
 
 use lettre::transport::smtp::AsyncSmtpTransport;
 use lettre::transport::smtp::authentication::Credentials;
@@ -25,25 +27,41 @@ mod transport;
 
 #[tokio::main]
 async fn main() -> () {
-    let url = env::var("DATABASE_URL").expect("DATABASE_URL parameter missing");
-    let url = url.as_str();
+    const ERROR_SETUP: &str = "Error while reading environment configuration";
+    let url = env::var("DATABASE_URL").expect(ERROR_SETUP);
+    let smtp_host = env::var("SMTP_HOST").expect(ERROR_SETUP);
+    let smtp_port = env::var("SMTP_PORT");
+    let smtp_port = match &smtp_port {
+        Ok(port) => Some(u16::from_str(port).expect(ERROR_SETUP)),
+        Err(VarError::NotPresent) => None,
+        _ => {
+            smtp_port.expect(ERROR_SETUP);
+            unreachable!()
+        }
+    };
+    let smtp_user = env::var("SMTP_USER").expect(ERROR_SETUP);
+    let smtp_pass = env::var("SMTP_PASS").expect(ERROR_SETUP);
 
     let (upd_tx, upd_rx) = mpsc::channel::<(Uuid, u64)>(8);
     let (rnd_tx, rnd_rx) = mpsc::channel::<String>(16);
     let (wrp_tx, wrp_rx) = mpsc::channel::<Message>(16);
 
-    let mut upd_client = BinlogClient::new(url, 9, StartPosition::Gtid("".to_owned()))
+    let mut upd_client = BinlogClient::new(&url, 9, StartPosition::Gtid("".to_owned()))
         .with_master_heartbeat(Duration::from_secs(5))
         .with_read_timeout(Duration::from_secs(60))
         .with_keepalive(Duration::from_secs(60), Duration::from_secs(10));
     let upd_stream = upd_client.connect();
-    let rnd_conn = MySqlConnection::connect(url);
+    let rnd_conn = MySqlConnection::connect(&url);
+    let mut transport = AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp_host).unwrap();
+    if let Some(port) = smtp_port {
+        transport = transport.port(port);
+    }
     let tls = TlsParameters::builder("localhost".to_owned())
         .dangerous_accept_invalid_certs(true)
         .build().unwrap();
-    let transport = AsyncSmtpTransport::<Tokio1Executor>::from_url("smtps://localhost:1025").unwrap();
-    let transport = transport.tls(Tls::Wrapper(tls));
-    let transport = transport.credentials(Credentials::new(String::from("user"), String::from("pass"))).build(); // TODO: Hardcoded
+    transport = transport.tls(Tls::Wrapper(tls));
+    transport = transport.credentials(Credentials::new(smtp_user, smtp_pass));
+    let transport = transport.build();
     let mut tasks = JoinSet::<()>::new();
     tasks.spawn(crate::binlog::listener(upd_stream.await.unwrap(), upd_tx));
     tasks.spawn(crate::template::renderer(rnd_conn.await.unwrap(), upd_rx, rnd_tx));

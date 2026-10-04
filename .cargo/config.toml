@@ -1,3 +1,7 @@
 [env]
 # Local database schema for query macro features
 DATABASE_URL = "mysql://user:pass@localhost:3306/herald"
+SMTP_HOST = "localhost"
+SMTP_PORT = "1025"
+SMTP_USER = "user"
+SMTP_PASS = "pass"
