@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 serde = "1"
 handlebars = { version = "6", features = ["dir_source"] }
-lettre = { version = "0.11.22", default-features = false, features = ["tokio1", "tokio1-rustls", "builder", "smtp-transport", "aws-lc-rs", "webpki-roots"] }
 tokio = { version = "1", features = ["rt"] }
 mysql-binlog-connector-rust = "0.3.3"
 herald = { git = "https://github.com/besiedlungszug/herald.git" }

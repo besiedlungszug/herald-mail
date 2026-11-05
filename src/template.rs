@@ -13,7 +13,7 @@ use herald::Uuid;
 pub(crate) async fn renderer(mut conn: MySqlConnection, mut rx: MpscReceiver<(Uuid, u64)>, tx: MpscSender<String>) -> () {
     let mut cache: HashMap<u64, Option<Arc<String>>> = HashMap::new();
     let mut handlebars = Handlebars::new();
-    handlebars.register_templates_directory("srv/skel", DirectorySourceOptionsBuilder::default().tpl_extension(".hbs").build().unwrap()).expect("Error while reading template directory");
+    handlebars.register_templates_directory("skel", DirectorySourceOptionsBuilder::default().tpl_extension(".hbs").build().unwrap()).expect("Error while reading template directory");
     handlebars.set_strict_mode(true);
     handlebars.register_escape_fn(handlebars::no_escape);
     let handlebars = Arc::new(handlebars);
@@ -29,7 +29,7 @@ pub(crate) async fn renderer(mut conn: MySqlConnection, mut rx: MpscReceiver<(Uu
             let handlebars = handlebars.clone();
             let slug = slug.clone();
             let tx = tx.clone();
-            tokio::task::spawn_blocking(move || render(handlebars, slug, contract.into_inner(), tx));
+            tokio::task::spawn_blocking(move || render(handlebars, slug, contract, tx));
         }
         //if let Err(err) = sqlx::query_file!("sql/registration_queue/delete.sql", registration_id, status).execute(&mut conn).await {
         //    eprintln!("Error while clearing registration queue: {}", err);
