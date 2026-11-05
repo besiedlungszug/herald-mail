@@ -8,4 +8,5 @@ serde = "1"
 handlebars = { version = "6", features = ["dir_source"] }
 tokio = { version = "1", features = ["rt"] }
 mysql-binlog-connector-rust = "0.3.3"
+uuid = { version = "1", features = ["v7"] }
 herald = { git = "https://github.com/besiedlungszug/herald.git" }

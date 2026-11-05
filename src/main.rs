@@ -1,6 +1,7 @@
 use std::time::Duration;
 use std::env;
-
+use std::path::Path;
+use uuid::Uuid;
 use tokio::{
     task::JoinSet,
     sync::mpsc,
@@ -11,7 +12,6 @@ use mysql_binlog_connector_rust::{
 };
 
 use herald::sqlx::{Connection, MySqlConnection};
-use herald::Uuid;
 
 mod binlog;
 mod template;
@@ -22,8 +22,7 @@ async fn main() -> () {
     let url = env::var("DATABASE_URL").expect(ERROR_SETUP);
 
     let (upd_tx, upd_rx) = mpsc::channel::<(Uuid, u64)>(8);
-    let (rnd_tx, rnd_rx) = mpsc::channel::<String>(16);
-    // TODO: rnd_rx contains the data we want to save to a file
+    let (rnd_tx, mut rnd_rx) = mpsc::channel::<String>(16);
 
     let mut upd_client = BinlogClient::new(&url, 9, StartPosition::Gtid("".to_owned()))
         .with_master_heartbeat(Duration::from_secs(5))
@@ -34,7 +33,19 @@ async fn main() -> () {
     let mut tasks = JoinSet::<()>::new();
     tasks.spawn(crate::binlog::listener(upd_stream.await.unwrap(), upd_tx));
     tasks.spawn(crate::template::renderer(rnd_conn.await.unwrap(), upd_rx, rnd_tx));
-    let _ = tasks.join_next().await;
-    
-    unreachable!()
+
+
+    let mut target = Path::new("mail").to_path_buf();
+    let mut buf = [b'.'; 40];
+    buf[37..].copy_from_slice(b"eml");
+    loop {
+        let message = rnd_rx.recv().await.expect("Error while reading 'rnd': closed handle");
+        Uuid::now_v7().as_hyphenated().encode_lower(&mut buf);
+        let filename = str::from_utf8(&buf).unwrap();
+        target.push(&filename);
+        if let Err(_) = std::fs::write(&target, message) {
+            //say something about failed writes
+        }
+        target.pop();
+    }
 }
